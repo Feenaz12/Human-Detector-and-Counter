@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Human Detector | Dashboard</title>
+
+<!-- Bootstrap, Icons & Fonts -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+body {
+    font-family: 'Roboto', sans-serif;
+    background: #f0f2f5;
+    color: #1e293b;
+    padding-top: 90px;
+}
+
+/* ===================== PAGE LOADER ===================== */
+#pageLoader {
+    position: fixed;
+    inset: 0;
+    background: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+/* Navbar */
+.navbar {
+    background: #1e293b;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.4rem;
+}
+
+/* Layout */
+.main-card {
+    max-width: 1400px;
+    margin: auto;
+    padding: 40px;
+    background: #fff;
+    border-radius: 22px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+.sub-card {
+    background: #fff;
+    padding: 25px;
+    border-radius: 18px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+}
+
+/* Webcam */
+#webcamFeed {
+    width: 100%;
+    max-height: 70vh;
+    border-radius: 18px;
+    border: 3px solid #1e293b;
+    display: none;
+    background: #000;
+    object-fit: contain;
+}
+#webcamFeed.live {
+    border-color: #0ea5e9;
+}
+
+/* Status badge */
+#camStatus {
+    padding: 6px 14px;
+    font-weight: 600;
+    font-size: .9rem;
+}
+.badge.bg-success {
+    animation: pulse 1.2s infinite;
+}
+@keyframes pulse {
+    0% { opacity:1; }
+    50% { opacity:.6; }
+    100% { opacity:1; }
+}
+
+/* Buttons */
+.btn {
+    border-radius: 12px;
+    font-weight: 600;
+}
+.btn-primary { background: #0ea5e9; border: none; }
+.btn-primary:hover { background: #0284c7; }
+.btn-success { background: #10b981; border: none; }
+.btn-danger { background: #ef4444; border: none; }
+</style>
+</head>
+
+<body>
+
+<!-- ===================== PAGE LOADER ===================== -->
+<div id="pageLoader">
+    <div class="text-center">
+        <div class="spinner-border text-light mb-3" role="status"></div>
+        <h5 class="text-light fw-semibold">Loading...</h5>
+    </div>
+</div>
+
+<!-- ===================== NAVBAR ===================== -->
+<nav class="navbar navbar-dark fixed-top">
+    <div class="container d-flex justify-content-between align-items-center">
+        <span class="navbar-brand">
+            <i class="bi bi-camera-video"></i> Human Detector & Counter
+        </span>
+
+        <div class="d-flex align-items-center gap-3 text-white">
+            <span class="fw-semibold">
+                <i class="bi bi-person-circle"></i> {{ username }}
+            </span>
+            <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- ===================== MAIN CONTENT ===================== -->
+<div class="main-card">
+    <h2 class="text-center fw-bold mb-5">Upload & Live Webcam</h2>
+
+    <div class="row g-4">
+
+        <!-- Upload Section -->
+        <div class="col-lg-6">
+            <div class="sub-card">
+                <h5><i class="bi bi-upload"></i> Upload Images / Videos</h5>
+                <p class="text-muted">Upload files for human detection.</p>
+
+                <form method="POST" enctype="multipart/form-data" action="/upload">
+                    <input type="file" class="form-control mb-3" name="files" multiple required>
+                    <button class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Analyze
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Webcam Section -->
+        <div class="col-lg-6">
+            <div class="sub-card text-center">
+                <div class="d-flex justify-content-between mb-2">
+                    <h5><i class="bi bi-camera-video"></i> Live Webcam</h5>
+                    <span id="camStatus" class="badge bg-secondary">Stopped</span>
+                </div>
+
+                <img id="webcamFeed" alt="Webcam Feed">
+
+                <div class="mt-4 d-flex gap-2 justify-content-center">
+                    <button class="btn btn-success" onclick="startCam()">
+                        <i class="bi bi-play-fill"></i> Start
+                    </button>
+                    <button class="btn btn-danger" onclick="stopCam()">
+                        <i class="bi bi-stop-fill"></i> Stop
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ===================== TOAST / SNACKBAR ===================== -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category, message in messages %}
+  <div class="toast text-bg-{{ category }} border-0" data-bs-delay="3000">
+    <div class="d-flex">
+      <div class="toast-body">{{ message }}</div>
+      <button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+{% endfor %}
+{% endwith %}
+</div>
+
+<!-- ===================== SCRIPTS ===================== -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/* Hide loader when page fully loads */
+window.addEventListener('load', () => {
+    const loader = document.getElementById('pageLoader');
+    loader.style.opacity = '0';
+    loader.style.transition = 'opacity 0.3s ease';
+    setTimeout(() => loader.style.display = 'none', 300);
+});
+
+/* Show toasts */
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.toast').forEach(t => {
+        new bootstrap.Toast(t).show();
+    });
+});
+
+/* Webcam Controls */
+function startCam(){
+    fetch('/start').then(()=>{
+        const cam = document.getElementById('webcamFeed');
+        cam.style.display = "block";
+        cam.src = "/video_feed?" + Date.now();
+        cam.classList.add("live");
+        document.getElementById('camStatus').className = "badge bg-success";
+        document.getElementById('camStatus').textContent = "LIVE";
+    });
+}
+
+function stopCam(){
+    fetch('/stop');
+    const cam = document.getElementById('webcamFeed');
+    cam.classList.remove("live");
+    document.getElementById('camStatus').className = "badge bg-secondary";
+    document.getElementById('camStatus').textContent = "Stopped";
+}
+</script>
+
+</body>
+</html>
